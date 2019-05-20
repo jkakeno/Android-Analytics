@@ -5,22 +5,13 @@ import android.os.Parcelable;
 
 public class Entry implements Parcelable {
 
-    String timestamp;
     String ipAddress;
     String webPage;
 
-    public Entry(String timestamp, String ipAddress, String webPage){
-        this.timestamp = timestamp;
+    public Entry(String ipAddress, String webPage){
+
         this.ipAddress = ipAddress;
         this.webPage = webPage;
-    }
-
-    public String getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(String timestamp) {
-        this.timestamp = timestamp;
     }
 
     public String getIpAddress() {
@@ -40,7 +31,6 @@ public class Entry implements Parcelable {
     }
 
     protected Entry(Parcel in) {
-        timestamp = in.readString();
         ipAddress = in.readString();
         webPage = in.readString();
     }
@@ -64,7 +54,6 @@ public class Entry implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(timestamp);
         dest.writeString(ipAddress);
         dest.writeString(webPage);
     }

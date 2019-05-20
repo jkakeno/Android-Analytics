@@ -4,7 +4,7 @@ import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import com.example.inspiringapps.DataBase.DataBase;
+
 import com.example.inspiringapps.InteractionListener;
 import com.example.inspiringapps.Model.Entry;
 import com.example.inspiringapps.Model.Sequence;
@@ -38,17 +38,13 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
 
     ApiInterface apiInterface;
     ResponseBody response;
-    DataBase db;
     FragmentManager fragmentManager;
+    ArrayList<Entry> entryList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        //Set up database
-        db = new DataBase(this);
-        db.clearTable();
 
         //Make network call
         apiInterface = ApiUtils.getFile();
@@ -85,13 +81,13 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
                 @Override
                 public void onComplete() {
                     Log.d(TAG, "Download Completed!");
-                    storeData(response);
+                    sortData(response);
                 }
             });
         }
     }
 
-    public void storeData(ResponseBody body) {
+    public void sortData(ResponseBody body) {
 
         InputStream inputStream = null;
         ArrayList<String> lines = new ArrayList<>();
@@ -112,13 +108,13 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
             Observable.fromIterable(lines).subscribe(new Observer<String>() {
                 @Override
                 public void onSubscribe(Disposable d) {
-                    Log.d(TAG,"Loading data to database...");
+                    Log.d(TAG,"Sorting data...");
                 }
 
                 @Override
                 public void onNext(String line) {
                     Entry entry = createEntry(line);
-                    db.insertEntry(entry);
+                    entryList.add(entry);
                 }
 
                 @Override
@@ -128,11 +124,13 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
 
                 @Override
                 public void onComplete() {
-                    Log.d(TAG,"Database loaded with data!");
+                    Log.d(TAG,"Data sorted!");
 
-                    ArrayList<String> pages = db.getEntries();
+                    sortByEntryIpaddress(entryList);
 
-                    Hashtable<String, Integer> unsortMap = getOccurances(pages);
+                    ArrayList<String> pageSequenceList = getPageSequenceList(entryList);
+
+                    Hashtable<String, Integer> unsortMap = getOccurances(pageSequenceList);
 
                     Map<String, Integer> sortedMap = sortByValue(unsortMap);
 
@@ -157,12 +155,38 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
     public Entry createEntry(String readstring){
         String splitStr = readstring.split("\"-\"")[0];
         String ipaddress = splitStr.split("- -")[0];
-        String timestamp = splitStr.split("[\\[\\]]")[1];
         String str = splitStr.split("GET ")[1];
         String webpage = str.split("HTTP")[0];
-        return new Entry(timestamp,ipaddress,webpage);
+        return new Entry(ipaddress,webpage);
     }
 
+    public void sortByEntryIpaddress(ArrayList<Entry> entryList){
+        Collections.sort(entryList, new Comparator<Entry>(){
+            public int compare(Entry entry1, Entry entry2) {
+                return entry1.getIpAddress().compareToIgnoreCase(entry2.getIpAddress());
+            }
+        });
+    }
+
+    public ArrayList<String> getPageSequenceList(ArrayList<Entry> entryList){
+        ArrayList<String> sequenceList = new ArrayList<>();
+
+        for(int entry=0;entry<entryList.size()-2;entry++){
+            String user1 = entryList.get(entry).getIpAddress();
+            String user2 = entryList.get(entry+1).getIpAddress();
+            String user3 = entryList.get(entry+2).getIpAddress();
+
+            if(user1.equals(user2) && user1.equals(user3)){
+                String page1 = entryList.get(entry).getWebPage();
+                String page2 = entryList.get(entry+1).getWebPage();
+                String page3 = entryList.get(entry+2).getWebPage();
+                String pages = page1+" -> "+page2+" -> "+page3;
+                sequenceList.add(pages);
+            }
+        }
+
+        return sequenceList;
+    }
 
     public Hashtable<String, Integer> getOccurances(ArrayList<String> pages){
         Hashtable<String, Integer> unsortMap = new Hashtable<String, Integer>();
