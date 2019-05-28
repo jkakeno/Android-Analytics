@@ -2,4 +2,5 @@
     <string name="app_name">InspiringApps</string>
     <string name="download_prompt">Click the download button \n to download file.</string>
     <string name="wait_prompt">Downloading ---> Analyzing \n please wait...</string>
+    <string name="no_items">Sorry there are no items to display.</string>
 </resources>

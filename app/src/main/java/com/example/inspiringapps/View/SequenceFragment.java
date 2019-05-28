@@ -2,7 +2,6 @@ package com.example.inspiringapps.View;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -10,10 +9,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import com.example.inspiringapps.InteractionListener;
+
 import com.example.inspiringapps.Model.Sequence;
 import com.example.inspiringapps.R;
 import java.util.ArrayList;
@@ -26,9 +24,7 @@ public class SequenceFragment  extends Fragment {
     RecyclerView recyclerView;
     LinearLayoutManager layoutManager;
     TextView message;
-    Button button;
     LinearLayout title;
-    InteractionListener listener;
     SequenceAdapter adapter;
     ArrayList<Sequence> sequences;
 
@@ -55,7 +51,6 @@ public class SequenceFragment  extends Fragment {
         Log.d(TAG,"onCreateView");
         view = inflater.inflate(R.layout.sequence_fragment, container, false);
         message = view.findViewById(R.id.message);
-        button = view.findViewById(R.id.download);
         recyclerView = view.findViewById(R.id.log_recyler_view);
         title = view.findViewById(R.id.title);
 
@@ -66,7 +61,6 @@ public class SequenceFragment  extends Fragment {
     public void onAttach(Context context) {
         super.onAttach(context);
         Log.d(TAG,"onAttach");
-        listener = (InteractionListener) context;
     }
 
     @Override
@@ -87,28 +81,16 @@ public class SequenceFragment  extends Fragment {
         Log.d(TAG,"onResume");
 
         if(sequences != null) {
-            message.setVisibility(View.INVISIBLE);
-            button.setVisibility(View.INVISIBLE);
             title.setVisibility(View.VISIBLE);
+            message.setVisibility(View.INVISIBLE);
 
             adapter = new SequenceAdapter(sequences);
             layoutManager = new LinearLayoutManager(getActivity());
             recyclerView.setAdapter(adapter);
             recyclerView.setLayoutManager(layoutManager);
         }else{
+            title.setVisibility(View.VISIBLE);
             message.setVisibility(View.VISIBLE);
-            message.setText(getResources().getString(R.string.download_prompt));
-            button.setVisibility(View.VISIBLE);
-            title.setVisibility(View.INVISIBLE);
-
-            button.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    message.setText(getResources().getString(R.string.wait_prompt));
-                    listener.onDownloadButtonPress(true);
-                    button.setVisibility(View.INVISIBLE);
-                }
-            });
         }
 
     }

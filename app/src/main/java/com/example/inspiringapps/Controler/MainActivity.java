@@ -1,16 +1,16 @@
 package com.example.inspiringapps.Controler;
 
-import android.graphics.Color;
+import android.content.DialogInterface;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.LinearLayout;
+import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
+import android.widget.TextView;
 
-import com.example.inspiringapps.InteractionListener;
 import com.example.inspiringapps.Model.Entry;
 import com.example.inspiringapps.Model.Sequence;
 import com.example.inspiringapps.Network.ApiInterface;
@@ -36,7 +36,7 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 import okhttp3.ResponseBody;
 
-public class MainActivity extends AppCompatActivity implements InteractionListener {
+public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String SEQUENCE_FRAGMENT = "sequenceFragment";
@@ -45,6 +45,10 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
     ResponseBody response;
     FragmentManager fragmentManager;
     ArrayList<Entry> entryList = new ArrayList<>();
+
+    TextView message;
+    Button button;
+    ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,39 +61,51 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
         //Get the fragment manager
         fragmentManager = getSupportFragmentManager();
 
-        //Display login fragment
-        SequenceFragment sequenceFragment = new SequenceFragment();
-        fragmentManager.beginTransaction().replace(R.id.root, sequenceFragment, SEQUENCE_FRAGMENT).commit();
+        message = findViewById(R.id.message);
+        progressBar = findViewById(R.id.progress);
+        button = findViewById(R.id.download);
+
+        message.setText(getResources().getString(R.string.download_prompt));
+        progressBar.setVisibility(View.INVISIBLE);
+
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                download();
+            }
+        });
+
     }
 
+    public void download() {
+        apiInterface.downloadFile().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Observer<ResponseBody>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+                Log.d(TAG, "Downloading...");
 
-    @Override
-    public void onDownloadButtonPress(boolean click) {
+                message.setText(getResources().getString(R.string.wait_prompt));
+                progressBar.setVisibility(View.VISIBLE);
+                button.setVisibility(View.INVISIBLE);
 
-        if(click) {
-            apiInterface.downloadFile().subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Observer<ResponseBody>() {
-                @Override
-                public void onSubscribe(Disposable d) {
-                    Log.d(TAG, "Downloading...");
-                }
+            }
 
-                @Override
-                public void onNext(ResponseBody responseBody) {
-                    response = responseBody;
-                }
+            @Override
+            public void onNext(ResponseBody responseBody) {
+                response = responseBody;
+            }
 
-                @Override
-                public void onError(Throwable e) {
-                    Log.d(TAG, "Error" + e.getMessage());
-                }
+            @Override
+            public void onError(Throwable e) {
+                Log.d(TAG, "Error" + e.getMessage());
+                showErrorDialog(e.getMessage());
+            }
 
-                @Override
-                public void onComplete() {
-                    Log.d(TAG, "Download Completed!");
-                    sortData(response);
-                }
-            });
-        }
+            @Override
+            public void onComplete() {
+                Log.d(TAG, "Download Completed!");
+                sortData(response);
+            }
+        });
     }
 
     public void sortData(ResponseBody body) {
@@ -113,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
             Observable.fromIterable(lines).subscribe(new Observer<String>() {
                 @Override
                 public void onSubscribe(Disposable d) {
-                    Log.d(TAG,"Sorting data...");
+                    Log.d(TAG, "Sorting data...");
                 }
 
                 @Override
@@ -124,12 +140,13 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
 
                 @Override
                 public void onError(Throwable e) {
-                    Log.d(TAG,"Error" + e.getMessage());
+                    Log.d(TAG, "Error" + e.getMessage());
+                    showErrorDialog(e.getMessage());
                 }
 
                 @Override
                 public void onComplete() {
-                    Log.d(TAG,"Data sorted!");
+                    Log.d(TAG, "Data sorted!");
 
                     sortByEntryIpaddress(entryList);
 
@@ -147,6 +164,9 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
                         e.printStackTrace();
                     }
 
+                    message.setVisibility(View.INVISIBLE);
+                    progressBar.setVisibility(View.INVISIBLE);
+
                     SequenceFragment sequenceFragment = SequenceFragment.newInstance(sortedList);
                     fragmentManager.beginTransaction().replace(R.id.root, sequenceFragment, SEQUENCE_FRAGMENT).commit();
                 }
@@ -154,38 +174,39 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
 
         } catch (IOException e) {
             e.getMessage();
+            showErrorDialog(e.getMessage());
         }
     }
 
-    public Entry createEntry(String readstring){
+    public Entry createEntry(String readstring) {
         String splitStr = readstring.split("\"-\"")[0];
         String ipaddress = splitStr.split("- -")[0];
         String str = splitStr.split("GET ")[1];
         String webpage = str.split("HTTP")[0];
-        return new Entry(ipaddress,webpage);
+        return new Entry(ipaddress, webpage);
     }
 
-    public void sortByEntryIpaddress(ArrayList<Entry> entryList){
-        Collections.sort(entryList, new Comparator<Entry>(){
+    public void sortByEntryIpaddress(ArrayList<Entry> entryList) {
+        Collections.sort(entryList, new Comparator<Entry>() {
             public int compare(Entry entry1, Entry entry2) {
                 return entry1.getIpAddress().compareToIgnoreCase(entry2.getIpAddress());
             }
         });
     }
 
-    public ArrayList<String> getPageSequenceList(ArrayList<Entry> entryList){
+    public ArrayList<String> getPageSequenceList(ArrayList<Entry> entryList) {
         ArrayList<String> sequenceList = new ArrayList<>();
 
-        for(int entry=0;entry<entryList.size()-2;entry++){
+        for (int entry = 0; entry < entryList.size() - 2; entry++) {
             String user1 = entryList.get(entry).getIpAddress();
-            String user2 = entryList.get(entry+1).getIpAddress();
-            String user3 = entryList.get(entry+2).getIpAddress();
+            String user2 = entryList.get(entry + 1).getIpAddress();
+            String user3 = entryList.get(entry + 2).getIpAddress();
 
-            if(user1.equals(user2) && user1.equals(user3)){
+            if (user1.equals(user2) && user1.equals(user3)) {
                 String page1 = entryList.get(entry).getWebPage();
-                String page2 = entryList.get(entry+1).getWebPage();
-                String page3 = entryList.get(entry+2).getWebPage();
-                String pages = page1+" -> "+page2+" -> "+page3;
+                String page2 = entryList.get(entry + 1).getWebPage();
+                String page3 = entryList.get(entry + 2).getWebPage();
+                String pages = page1 + " -> " + page2 + " -> " + page3;
                 sequenceList.add(pages);
             }
         }
@@ -193,11 +214,11 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
         return sequenceList;
     }
 
-    public Hashtable<String, Integer> getOccurances(ArrayList<String> pages){
+    public Hashtable<String, Integer> getOccurances(ArrayList<String> pages) {
         Hashtable<String, Integer> unsortMap = new Hashtable<String, Integer>();
-        for(String page:pages){
+        for (String page : pages) {
             int occurrences = Collections.frequency(pages, page);
-            unsortMap.put(page,occurrences);
+            unsortMap.put(page, occurrences);
         }
         return unsortMap;
     }
@@ -226,14 +247,28 @@ public class MainActivity extends AppCompatActivity implements InteractionListen
         return sortedMap;
     }
 
-    public ArrayList<Sequence> convertToList(Map<String, Integer> sortedMap){
+    public ArrayList<Sequence> convertToList(Map<String, Integer> sortedMap) {
         ArrayList<Sequence> sequences = new ArrayList<>();
 
         for (Map.Entry<String, Integer> entry : sortedMap.entrySet()) {
             String sequence = entry.getKey();
             String occurence = entry.getValue().toString();
-            sequences.add(new Sequence(sequence,occurence));
+            sequences.add(new Sequence(sequence, occurence));
         }
         return sequences;
+    }
+
+    public void showErrorDialog(String message) {
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MainActivity.this);
+        alertDialogBuilder.setTitle("Error");
+        alertDialogBuilder.setMessage(message);
+        alertDialogBuilder.setPositiveButton("DISMISS", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+
+            }
+        });
+        AlertDialog errorDialog = alertDialogBuilder.create();
+        errorDialog.show();
     }
 }
