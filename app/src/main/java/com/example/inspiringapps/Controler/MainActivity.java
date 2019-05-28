@@ -258,10 +258,12 @@ public class MainActivity extends AppCompatActivity {
         return sequences;
     }
 
-    public void showErrorDialog(String message) {
+    public void showErrorDialog(String msg) {
+        message.setVisibility(View.INVISIBLE);
+        progressBar.setVisibility(View.INVISIBLE);
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MainActivity.this);
         alertDialogBuilder.setTitle("Error");
-        alertDialogBuilder.setMessage(message);
+        alertDialogBuilder.setMessage(msg);
         alertDialogBuilder.setPositiveButton("DISMISS", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
